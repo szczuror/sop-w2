@@ -71,11 +71,6 @@ void e2(char* path, char* name) {
     while(linia != NULL){
         printf("%s inspecting %s\n", name, linia);
         linia = strtok(NULL, "\n");
-        if(strcmp(linia, "-")){
-        if(fork()){
-            e2(".", linia);
-        }
-        break;
         }
     }
     printf("%s has inspected all subordinates\n", name);

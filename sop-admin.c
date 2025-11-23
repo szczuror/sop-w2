@@ -55,26 +55,44 @@ void sethandler(void (*f)(int), int sigNo)
         ERR("sigaction");
 }
 
-void e2(char* path, char* name) {
+void process(char* path, char* name) {
     printf("My name is %s and my PID is %d\n", name, getpid());
-    char cwd[FILE_MAX_SIZE];
-    getcwd(cwd, FILE_MAX_SIZE);
-    chdir(path);
-    // sprintf(path + strlen(path), "%s", name);
-    // printf("%s\n", path);
-    int fd = open(name, O_RDONLY);
+
+    char fullPath[PATH_MAX];
+    snprintf(fullPath, PATH_MAX, "%s/%s", path, name);
+
+    int fd = open(fullPath, O_RDONLY);
     if (fd == -1)
         ERR("open");
-    char file_buf[FILE_MAX_SIZE];
-    bulk_read(fd, file_buf, FILE_MAX_SIZE);
+
+    char file_buf[FILE_MAX_SIZE + 1];
+    ssize_t bytes_read = bulk_read(fd, file_buf, FILE_MAX_SIZE);
+    if(bytes_read < 0) ERR("bulk_read");
+    file_buf[bytes_read] = '\0';
+    if(close(fd) == -1) ERR("close");
+
     char* linia = strtok(file_buf, "\n");
     while(linia != NULL){
+        if(strcmp(linia, "-") == 0) break;
+        
         printf("%s inspecting %s\n", name, linia);
+
+        pid_t pid = fork();
+
+        if(pid == -1) ERR("fork");
+
+        if(pid == 0) {
+            process(path, linia);
+            exit(EXIT_SUCCESS);
+        }
+
         linia = strtok(NULL, "\n");
         }
-    }
-    printf("%s has inspected all subordinates\n", name);
-    chdir(cwd);
+        
+        printf("%s has inspected all subordinates\n", name);
+        while(wait(NULL) > 0);
+        printf("%s is leaving the office\n", name);
+
 }
 
 int main(int argc, char* argv[])
@@ -96,9 +114,11 @@ int main(int argc, char* argv[])
 
     sethandler(sigusr1_handler, SIGUSR1);
 
-    printf("Waiting for SIGUSR1\n");
+    // printf("Waiting for SIGUSR1\n");
     // sigsuspend(&oldmask);
-    printf("Got SIGUSR1\n");
+    // printf("Got SIGUSR1\n");
+    // if(sig_usr1 == SIGUSR1){
+        process(path, name);
+    // }
 
-    e2(path, name);
 }
